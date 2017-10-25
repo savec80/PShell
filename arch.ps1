@@ -1,0 +1,1 @@
+Get-ChildItem C:\Docs\Relevance\SCG\Content -Directory | % {& 'C:\Program Files\7-Zip\7z.exe' a -tzip $_ $_.fullname}
