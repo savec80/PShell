@@ -43,13 +43,15 @@
                 #Add-Member -InputObject $data_CS -MemberType NoteProperty -Name OS_ServicePackMajorVersion -Value $data_os.ServicePackMajorVersion -Force        
                 $props = @{'ComputerName' = $computer;
                           'OSVersion' = $data_OS.version;
-                          'SPVersion' = $data_OS.ServicePackMajorVersion;
+                          'Workgroup' = $data_CS.Workgroup;
+                          'ServicePackMajorVersion' = $data_OS.ServicePackMajorVersion;
                           'BIOSVersion' = $data_bios.Version;
                           'Manufacturer' = $data_CS.Manufacturer;
                           'Model' = $data_CS.Model;
                           'AdminPasswordStatus' = $data_CS.AdminPasswordStatus}
                 Write-Verbose "wmi query complete"
                 $data = New-Object -TypeName psobject -Property $props
+                $data.PSobject.TypeNames.Insert(0, 'MOL.ComputerSystemInfo')
                 Write-Output -InputObject $data
             }
         } #foreach
@@ -78,9 +80,10 @@ function get-diskdetails {
                             Freespace = $FreeSpace;
                             Size = $Size}
                 $data = New-Object -TypeName psobject -Property $props
+                $data.PSobject.TypeNames.Insert(0, 'MOL.DiskInfo')
                 Write-Output $data
                 }
-                Remove-Variable $props
+                Remove-Variable $disks
              } Catch {
                 if ($LogError) {
                     Write-Verbose "loggind error to $errorlog"
@@ -123,6 +126,7 @@ function get-servicedetails {
                   $props.Add("VMSize", $proc_data.VirtualSize)
                   $props.Add("PeakPageFile", $proc_data.PeakPageFileUsage)
                   $data = New-Object -TypeName psobject -Property $props
+                  $data.PSobject.TypeNames.Insert(0, 'MOL.ServiceInfo')
                   Write-Output $data
                 } #foreach
             } catch {
@@ -139,9 +143,9 @@ function get-servicedetails {
     end {}
 }
 
-get-servicedetails
-#Write-Host "-----pipeline mode-----"
 #'localhost', 'localhost', 'localhost' | get-systeminfo -Verbose
 #Write-Host "-----param mode-----"
-#get-systeminfo test  -LogErrors
-#get-diskdetails
+#get-systeminfo localhost  -LogErrors
+#get-diskdetails localhost
+#get-servicedetails localhost | ft
+#Update-FormatData -PrependPath 'C:\Docs\Projects\PShell\Lunch\CustomViewA.format.ps1xml'

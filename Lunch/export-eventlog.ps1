@@ -13,7 +13,7 @@
         Write-Verbose "Starting export event source function"
         #the date format is case-sensitive"
         $datestring=Get-Date -Format "yyyyMMdd"
-        $logpath=Join-path -Path 'C:\Users\avsavenkov\Documents\Mind\powershell\PShell\Lunch\' -ChildPath $datestring
+        $logpath=Join-path -Path 'C:\Docs\Projects\PShell\Lunch' -ChildPath $datestring
         if (! (Test-Path -path $logpath)) {
             Write-Verbose "Creating $logpath"
             mkdir $logpath
@@ -24,7 +24,7 @@
         Write-Verbose "Getting newest $newest $log event log entries from
                        $computername"
         Try {
-            Write-Host "$computername.ToUpper" -ForegroundColor Green
+            Write-Host $computername.ToUpper() -ForegroundColor Green
             $logs=Get-EventLog -LogName $log -Newest $Newest -ErrorAction Stop #-ComputerName $Computername
             if ($logs) {
                 Write-Verbose "Sorting $($logs.count) entries"
@@ -34,7 +34,7 @@
                                         Out-File -FilePath $logfile -append
 
                                         #clear variables for next time
-                                        Remove-Variable -Name logs,logfile
+ #                                       Remove-Variable -Name logs,logfile -Force
                                      }
             }
             else {Write-Warning "No logged events found for $log on $Computername"}
