@@ -1,4 +1,6 @@
-﻿function get-MOLsysteminfo {
+$MOLErrorLogPreference = 'c:\temp\mol-retries.txt'
+
+function get-MOLsysteminfo {
     [cmdletbinding()]
     Param (
         [Parameter(
@@ -9,7 +11,7 @@
         [ValidateCount(1,10)]
         [string[]]$ComputerNames = "localhost",
         
-        [string]$errorlog = "C:\temp\errors.log",
+        [string]$errorlog = "$MOLErrorLogPreference",
 
         [switch]$LogErrors
     )
@@ -60,7 +62,7 @@
     end {}
 }
 
-function get-diskdetails {
+function get-MOLdiskdetails {
     [cmdletbinding()]
     Param ([Parameter(Mandatory=$True,ValueFromPipeline=$True)]
         [string[]]$computernames = "localhost",
@@ -98,7 +100,7 @@ function get-diskdetails {
     end {}
 }
 
-function get-servicedetails {
+function get-MOLservicedetails {
     [cmdletbinding()]
     Param ([Parameter(Mandatory=$true)]
         [string[]]$computernames = "localhost",
@@ -144,6 +146,8 @@ function get-servicedetails {
     end {}
 }
 
+Export-ModuleMember -Variable MOLErrorLogPreference
+Export-ModuleMember -Function Get-MOLSystemInfo, get-MOLservicedetails, get-MOLdiskdetails
 #'localhost', 'localhost', 'localhost' | get-systeminfo -Verbose
 #Write-Host "-----param mode-----"
 #get-systeminfo localhost  -LogErrors
