@@ -35,8 +35,8 @@
 				<Label>OSVersion</Label>
                             </ListItem>
                             <ListItem>
-                                <PropertyName>ServicePackMajorVersion</PropertyName>
-				<Label>SPVersion</Label>
+                                <PropertyName>SPVersion</PropertyName>
+				<Label>ServicePack Version</Label>
                             </ListItem>
                         </ListItems>
                     </ListEntry>

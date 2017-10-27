@@ -1,4 +1,39 @@
 $MOLErrorLogPreference = 'c:\temp\mol-retries.txt'
+$MOLConnectionString = "server=localhost\SQLEXPRESS;database=inventory;trusted_connection=True"
+
+Import-Module MOLDatabase
+
+function Get-MOLComputerNamesFromDatabase {
+<#
+.SYNOPSIS
+Read computernames from database
+#>
+    Get-MOLDatabaseData -ConnectionString $MOLConnectionString -isSQLServer -query "SELECT computername FROM computers"
+}
+
+function Set-MOLInventoryInDatase {
+<#
+Accept the output of GET_MOLSystemInfo and saves the result back to database
+#>
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory=$true,
+                   ValueFromPipeline=$true)]
+        [object[]]$inputObject
+    )
+    Process {
+        foreach ($obj in $inputObject) {
+            $query = "UPDATE computers SET
+                      osversion = '$($obj.osversion)',
+                      spversion = '$($obj.spversion)',
+                      manufacturer = '$($obj.manufacturer)',
+                      model = '$($obj.model)'
+                      WHERE computername = '$($obj.computername)'"
+            Write-Verbose "query is: $query"
+            Invoke-MOLDatabaseQuery -connection $MOLConnectionString -isSQLServer -query $query
+        }
+    }
+}
 
 function get-MOLsysteminfo {
     [cmdletbinding()]
@@ -6,6 +41,7 @@ function get-MOLsysteminfo {
         [Parameter(
             Mandatory=$True,
             ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
             HelpMessage="Computer Name or IP address")]
         [Alias('hostname')]
         [ValidateCount(1,10)]
@@ -47,7 +83,7 @@ function get-MOLsysteminfo {
                 $props = @{'ComputerName' = $computer;
                           'OSVersion' = $data_OS.version;
                           'Workgroup' = $data_CS.Workgroup;
-                          'ServicePackMajorVersion' = $data_OS.ServicePackMajorVersion;
+                          'SPVersion' = $data_OS.ServicePackMajorVersion;
                           'BIOSVersion' = $data_bios.Version;
                           'Manufacturer' = $data_CS.Manufacturer;
                           'Model' = $data_CS.Model;
@@ -146,8 +182,87 @@ function get-MOLservicedetails {
     end {}
 }
 
-Export-ModuleMember -Variable MOLErrorLogPreference
-Export-ModuleMember -Function Get-MOLSystemInfo, get-MOLservicedetails, get-MOLdiskdetails
+function Get-RemoteSMBShare {
+<#
+.EXAMPLE
+get-remotesmbshare -computername localhost
+#>
+    [Cmdletbinding()]
+    param(
+        [Parameter(Mandatory=$true,ValueFromPipeline=$True)]
+        [Alias('hostname')]
+        [ValidateCount(1,5)]
+        [string[]]$computername,
+
+        [string]$erropath = 'c:\temp\MOLshareErr.txt',
+
+        [switch]$LogError
+    )
+    foreach ($computer in $computername) {
+        try {
+            $data = Invoke-Command -ScriptBlock {gwmi -ClassName win32_share} -ComputerName $computer -ErrorAction Stop 
+        } Catch {
+            Write-Verbose "fail to connect to $computer"
+            Write-Verbose "error is: $_.Exception.Message"
+            if ($LogError) {
+                Out-File -FilePath $erropath -InputObject $computer -Append
+            }
+        }
+        if ($data) {$data; Remove-Variable data}
+    }
+}
+
+function Restart-MOLComputer {
+    [CmdletBinding(SupportsShouldProcess=$true,
+                   ConfirmImpact='High')]
+    param (
+        [Parameter(Mandatory=$true,
+                   ValueFromPipeline=$true)]
+        [string[]]$Computername
+    )
+    PROCESS {
+        foreach ($Computer in $Computername) {
+            Invoke-WMIMethod -Class Win32_OperatingSystem -Name reboot -ComputerName $Computer
+        }
+    }
+}
+
+function Set-MOLServicePassword {
+    [CmdletBinding(SupportsShouldProcess=$true,
+                   ConfirmImpact='Medium')]
+    param (
+        [Parameter(Mandatory=$true,
+                   ValueFromPipeline=$true)]
+        [string[]]$ComputerName,
+
+        [Parameter(Mandatory=$true)]
+        [string]$ServiceName,
+
+        [Parameter(Mandatory=$true)]
+        [string]$NewPassword
+    )
+    PROCESS {
+        foreach ($computer in $ComputerName) {
+            $svcs = Get-WmiObject -ComputerName $computer -Filter "name='$ServiceName'" -Class win32_service
+            foreach ($svc in $svcs) {
+                if ($PSCmdlet.ShouldProcess("$svc on $computer")) {
+                    $svc.Change($null,
+                                $null,
+                                $null,
+                                $null,
+                                $null,
+                                $null,
+                                $null,
+                                $NewPassword) | Out-Null
+                    
+                }
+            }
+        }
+    }
+}
+Export-ModuleMember -Variable MOLErrorLogPreference, MOLConnectionString
+Export-ModuleMember -Function Get-MOLSystemInfo, get-MOLservicedetails, get-MOLdiskdetails, Set-MOLInventoryInDatase, 
+                              Get-MOLComputerNamesFromDatabase, Get-RemoteSMBShare, Restart-MOLComputer, Set-MOLServicePassword 
 #'localhost', 'localhost', 'localhost' | get-systeminfo -Verbose
 #Write-Host "-----param mode-----"
 #get-systeminfo localhost  -LogErrors
